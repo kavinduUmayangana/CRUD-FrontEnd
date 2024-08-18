@@ -1,18 +1,138 @@
-name: Docker Image CI
+name: Build and Push Docker Image to Docker Hub
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [  "main" ]
+
+
+
+env:
+  # Use docker.io for Docker Hub if empty
+  REGISTRY: docker.io
+  # github.repository as <account>/<repo>
+  IMAGE_NAME: hiransanjeewa/portfolio
+  EC2_INSTANCE_IP:  ${{ secrets.EC2_HOST }}     
+  SSH_USERNAME: ubuntu
+  SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
 
 jobs:
+ build-push-gcr:
 
-  build:
+ build:
+    name: Deploying in EC2
 
     runs-on: ubuntu-latest
+    
+    - name: Check out the repo
+      uses: actions/checkout@v3
 
-    steps:
-    - uses: actions/checkout@v4
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+
+    - name: Build the React Docker image
+      run : |
+        docker build .
+     
+      
+    - name: Pushing images to Dockerhub
+      run : |  
+       docker push
+
+
+    - name: Deploy to EC2 instance
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ env.EC2_INSTANCE_IP }}
+        username: ${{ env.SSH_USERNAME }}
+        key: ${{ env.SSH_PRIVATE_KEY }}
+        script: |
+         sudo apt update
+         sudo apt install -y docker.io
+     
+
+         # Removing previous verions
+            
+         sudo docker stop my-frontend-container
+         sudo docker rm my-frontend-container
+         
+        
+         sudo docker rmi kavinduumayangana/frontend-image:latest
+
+         sudo docker image prune
+         sudo docker container prune
+
+
+         # Pull the Docker Hub images
+         
+         sudo docker pull kavinduumayangana/frontend-image:latest
+         # Add more pull commands as needed
+
+         
+         
+        
+         
+        
+         # Starting Applications
+
+
+         sudo docker run -d -p 3000:3000  --name my-frontend-container kavinduumayangana/frontend-image:latest
+         
+        
+      
+
+
+         
+
+        #  sudo docker stop 3a9f0353de7b
+        #  sudo docker start 3a9f0353de7b 
+        
+        # running mongodb 
+        # sudo docker pull mongo:latest
+        # sudo docker volume create my-volume
+        # sudo docker run -d -p 27017:27017 -v my-volume:/data/db -d mongo
+
+
+        # Ngnix configurations
+        # sudo apt update
+
+#         sudo apt install nginx
+#         sudo systemctl start nginx
+#         sudo systemctl enable nginx
+#         sudo nano /etc/nginx/nginx.conf
+#         chmod options permissions file
+
+#         http {
+  # server {
+  #   listen 80;
+
+  #   location / {
+  #     proxy_pass http://localhost:3000;
+  #     proxy_set_header Host $host;
+  #     proxy_set_header X-Real-IP $remote_addr;
+  #   }
+
+  #   location /api {
+  #     proxy_pass http://localhost:8080;
+  #     proxy_set_header Host $host;
+  #     proxy_set_header X-Real-IP $remote_addr;
+  #   }
+  # # }
+  # server {
+  #   listen 27017; # MongoDB default port
+
+  #   location / {
+  #     proxy_pass http://localhost:8080; # Backend container IP and port
+  #     proxy_set_header Host $host;
+  #     proxy_set_header X-Real-IP $remote_addr;
+  #   }
+  # }
+
+# } in this settings how to run my containers
+# change the localhost with the public ip of the instance
