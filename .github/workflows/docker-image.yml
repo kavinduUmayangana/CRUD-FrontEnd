@@ -17,8 +17,7 @@ env:
 
 
 jobs:
-
- build:
+  build:
     name: Deploying in EC2
 
     runs-on: ubuntu-latest
